@@ -1,8 +1,11 @@
 // dcpos_app/lib/main.dart
 
-import 'package:dcpos_app/pages/home_page.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:dcpos_app/isar_service.dart';
+import 'package:dcpos_app/services/api_service.dart';
+import 'package:dcpos_app/providers/app_state_provider.dart';
+import 'package:dcpos_app/pages/auth_checker.dart';
 
 // -------------------------------------------------------------------
 // TEMA
@@ -48,12 +51,13 @@ final ThemeData dcposTheme = ThemeData(
 // -------------------------------------------------------------------
 
 final IsarService isarService = IsarService();
+late final ApiService apiService;
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Aseguramos que la DB se abra antes de iniciar la UI
   await isarService.db;
+  apiService = ApiService(isarService);
 
   runApp(const DCAPOSApp());
 }
@@ -63,10 +67,14 @@ class DCAPOSApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'DCAPOS UI',
-      theme: dcposTheme,
-      home: const HomePage(),
+    return ChangeNotifierProvider(
+      create: (context) => AppStateProvider(),
+      child: MaterialApp(
+        debugShowCheckedModeBanner: false,
+        title: 'DCAPOS UI',
+        theme: dcposTheme,
+        home: const AuthChecker(),
+      ),
     );
   }
 }

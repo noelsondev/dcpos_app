@@ -2,7 +2,8 @@
 
 import 'package:isar/isar.dart';
 import 'package:path_provider/path_provider.dart';
-import 'models/user_local.dart'; // Importar nuestro modelo
+// ¡RUTA CORREGIDA!
+import 'package:dcpos_app/models/local/user_local.dart';
 
 class IsarService {
   late Future<Isar> db;
@@ -15,7 +16,7 @@ class IsarService {
     if (Isar.instanceNames.isEmpty) {
       final dir = await getApplicationSupportDirectory();
       return await Isar.open(
-        // LISTA DE ESQUEMAS: Aquí incluimos todos los modelos Isar
+        // 'UserLocalSchema' ahora es accesible vía la importación corregida
         [UserLocalSchema],
         directory: dir.path,
         inspector: true,
@@ -23,10 +24,4 @@ class IsarService {
     }
     return Future.value(Isar.getInstance());
   }
-
-  // Puedes añadir métodos aquí para interactuar con la DB:
-  // Future<void> saveUser(UserLocal user) async {
-  //   final isar = await db;
-  //   await isar.writeTxn(() => isar.userLocals.put(user));
-  // }
 }

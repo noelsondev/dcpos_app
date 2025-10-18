@@ -1,9 +1,16 @@
+// dcpos_app/lib/utils/responsive_extension.dart
+
 import 'package:flutter/material.dart';
 
+const double kMobileBreakpoint = 600.0;
+const double kTabletBreakpoint = 1000.0;
+
 extension ResponsiveExtension on BuildContext {
-  bool get isMobile => MediaQuery.of(this).size.width < 600;
+  double get screenWidth => MediaQuery.of(this).size.width;
+  double get screenHeight => MediaQuery.of(this).size.height;
+
+  bool get isMobile => screenWidth < kMobileBreakpoint;
   bool get isTablet =>
-      MediaQuery.of(this).size.width >= 600 &&
-      MediaQuery.of(this).size.width < 1024;
-  bool get isDesktop => MediaQuery.of(this).size.width >= 1024;
+      screenWidth >= kMobileBreakpoint && screenWidth < kTabletBreakpoint;
+  bool get isDesktop => screenWidth >= kTabletBreakpoint;
 }
