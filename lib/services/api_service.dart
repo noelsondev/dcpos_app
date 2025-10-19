@@ -321,4 +321,24 @@ class ApiService {
       throw Exception(_extractErrorMessage(e));
     }
   }
+
+  // -------------------------------------------------------------------
+  // Z. Funciones de Mantenimiento de Datos (Limpiar Isar)
+  // -------------------------------------------------------------------
+
+  /// Elimina TODA la base de datos de Isar (útil para debug y errores de índice).
+  Future<void> clearAllLocalData() async {
+    if (kDebugMode) {
+      print('DEBUG: Eliminando toda la base de datos local de Isar.');
+    }
+    await _isarService.db.then((isar) {
+      return isar.writeTxn(() async {
+        // Método que elimina todos los datos y restablece las colecciones
+        await isar.clear();
+      });
+    });
+    if (kDebugMode) {
+      print('DEBUG: Isar Database cleared successfully.');
+    }
+  }
 }

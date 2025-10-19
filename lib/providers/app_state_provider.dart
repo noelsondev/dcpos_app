@@ -1,25 +1,37 @@
-// dcpos_app/lib/providers/app_state_provider.dart
-
 import 'package:flutter/material.dart';
-// Importa el servicio y los modelos
 import 'package:dcpos_app/main.dart';
 import 'package:dcpos_app/models/domain/user.dart';
-// NUEVA IMPORTACIÓN: Modelos de Compañía y Sucursal
 import 'package:dcpos_app/models/domain/platform.dart';
+import 'package:dcpos_app/repositories/platform_repository.dart'; // ⬅️ NUEVA DEPENDENCIA
 
 // NUEVO ENUM: Añadir 'companies'
 enum AppSection { dashboard, pos, inventory, users, companies, settings }
 
 class AppStateProvider with ChangeNotifier {
-  // Cambiado el inicio para probar Companies
+  // -------------------------------------------------------------------
+  // DEPENDENCIA INYECTADA
+  // -------------------------------------------------------------------
+  final PlatformRepository _platformRepository;
+
+  AppStateProvider({required PlatformRepository platformRepository})
+    : _platformRepository = platformRepository {
+    // Inicializar la carga si la sección es 'companies' al inicio
+    if (_currentSection == AppSection.companies) {
+      fetchCompanies();
+    }
+  }
+
+  // -------------------------------------------------------------------
+  // ESTADO DE LA APLICACIÓN
+  // -------------------------------------------------------------------
   AppSection _currentSection = AppSection.companies;
 
   // ⚠️ SIMULACIÓN DE DATOS DEL USUARIO LOGUEADO
-  // ESTO HA SIDO MODIFICADO PARA SIMULAR UN GLOBAL_ADMIN
+  // Esto debería ser reemplazado por la lectura de Isar en un flujo de autenticación real.
   String get currentUserRoleName =>
-      'global_admin'; // ⬅️ CAMBIO: Ahora simula un Global Admin
+      'global_admin'; // Global Admin para pruebas de Compañías
   String? get currentUserCompanyId =>
-      null; // ⬅️ CAMBIO: El Global Admin no tiene Company ID
+      null; // El Global Admin no tiene Company ID asignado
   // -------------------------------------------------------------------
 
   // Estado para la gestión de usuarios
@@ -27,9 +39,7 @@ class AppStateProvider with ChangeNotifier {
   bool _isUsersLoading = false;
   String? _usersError;
 
-  // -------------------------------------------------------------------
   // ESTADO: Companies & Branches
-  // -------------------------------------------------------------------
   List<CompanyInDB> _companies = [];
   bool _isCompaniesLoading = false;
   String? _companiesError;
@@ -39,11 +49,14 @@ class AppStateProvider with ChangeNotifier {
   String? _branchesError;
   // -------------------------------------------------------------------
 
+  // -------------------------------------------------------------------
+  // GETTERS
+  // -------------------------------------------------------------------
+
   List<UserInDB> get users => _users;
   bool get isUsersLoading => _isUsersLoading;
   String? get usersError => _usersError;
 
-  // NUEVOS GETTERS
   List<CompanyInDB> get companies => _companies;
   bool get isCompaniesLoading => _isCompaniesLoading;
   String? get companiesError => _companiesError;
@@ -52,7 +65,6 @@ class AppStateProvider with ChangeNotifier {
   bool get isBranchesLoading => _isBranchesLoading;
   String? get branchesError => _branchesError;
 
-  // Propiedad existente
   AppSection get currentSection => _currentSection;
 
   void setSection(AppSection section) {
@@ -63,10 +75,11 @@ class AppStateProvider with ChangeNotifier {
       // Cargar datos al cambiar de sección
       switch (section) {
         case AppSection.users:
+          // fetchUsers aún usa apiService directamente si no hay lógica offline/sync
           fetchUsers();
           break;
         case AppSection.companies:
-          fetchCompanies();
+          fetchCompanies(); // ⬅️ Usa el nuevo flujo del Repositorio
           break;
         default:
           break;
@@ -75,7 +88,7 @@ class AppStateProvider with ChangeNotifier {
   }
 
   // -------------------------------------------------------------------
-  // USUARIOS: CRUD
+  // USUARIOS: CRUD (Usa apiService directamente)
   // -------------------------------------------------------------------
   Future<void> fetchUsers() async {
     if (_isUsersLoading) return;
@@ -108,7 +121,7 @@ class AppStateProvider with ChangeNotifier {
     }
   }
 
-  /// Actualiza un usuario existente (incluyendo isActive) y actualiza la lista local.
+  /// Actualiza un usuario existente y actualiza la lista local.
   Future<void> updateUser(String userId, UserUpdate updateData) async {
     _usersError = null;
     try {
@@ -127,7 +140,7 @@ class AppStateProvider with ChangeNotifier {
   }
 
   // -------------------------------------------------------------------
-  // COMPANIES: CRUD (LÓGICA DE VISIBILIDAD POR ROL)
+  // COMPANIES: CRUD (Usa PlatformRepository para lecturas/escrituras)
   // -------------------------------------------------------------------
 
   Future<void> fetchCompanies() async {
@@ -138,14 +151,14 @@ class AppStateProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      final allCompanies = await apiService.fetchCompanies();
+      // 1. OBTENER DEL REPOSITORIO (Lógica Cache-First aplicada aquí)
+      final allCompanies = await _platformRepository.getCompanies();
 
+      // 2. Lógica de filtrado por rol (misma lógica que antes)
       if (currentUserRoleName == 'global_admin') {
-        // Global Admin: Ve TODAS las compañías
         _companies = allCompanies;
       } else if (currentUserRoleName == 'company_admin' &&
           currentUserCompanyId != null) {
-        // Company Admin: Ve SOLO su compañía
         _companies = allCompanies
             .where((c) => c.id == currentUserCompanyId)
             .toList();
@@ -156,13 +169,11 @@ class AppStateProvider with ChangeNotifier {
           );
         }
       } else {
-        // Otros roles o company_admin sin ID: No ve compañías
         _companies = [];
       }
 
-      // Cargar las sucursales de la compañía seleccionada por defecto (la primera en la lista filtrada)
+      // 3. Cargar sucursales de la primera compañía (si existe)
       if (_companies.isNotEmpty) {
-        // Llama a fetchBranches, que actualiza _currentCompanyBranches
         await fetchBranches(_companies.first.id);
       }
     } catch (e) {
@@ -180,7 +191,8 @@ class AppStateProvider with ChangeNotifier {
       );
     }
     try {
-      final newCompany = await apiService.createCompany(company);
+      // LLAMA AL REPOSITORIO para la creación (sólo API)
+      final newCompany = await _platformRepository.createCompany(company);
       _companies.add(newCompany);
       notifyListeners();
     } catch (e) {
@@ -190,7 +202,7 @@ class AppStateProvider with ChangeNotifier {
   }
 
   // -------------------------------------------------------------------
-  // BRANCHES: CRUD
+  // BRANCHES: CRUD (Usa PlatformRepository para lecturas/escrituras)
   // -------------------------------------------------------------------
 
   /// Obtiene y devuelve la lista de sucursales para un companyId específico.
@@ -213,8 +225,8 @@ class AppStateProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      // 1. Llama al servicio y obtiene el resultado.
-      final fetchedBranches = await apiService.fetchBranches(companyId);
+      // 1. OBTENER DEL REPOSITORIO (Lógica Cache-First aplicada aquí)
+      final fetchedBranches = await _platformRepository.getBranches(companyId);
 
       // 2. Actualiza el estado interno del Provider.
       _currentCompanyBranches = fetchedBranches;
@@ -239,10 +251,13 @@ class AppStateProvider with ChangeNotifier {
       );
     }
 
-    // Global admin puede crear sucursales en cualquier compañía (si companyId es válido)
-
     try {
-      final newBranch = await apiService.createBranch(companyId, branch);
+      // LLAMA AL REPOSITORIO para la creación (sólo API)
+      final newBranch = await _platformRepository.createBranch(
+        companyId,
+        branch,
+      );
+
       // Solo añadimos si la nueva sucursal pertenece a la compañía que estamos viendo actualmente.
       if (companyId == (_companies.isNotEmpty ? _companies.first.id : null) ||
           currentUserRoleName == 'global_admin') {

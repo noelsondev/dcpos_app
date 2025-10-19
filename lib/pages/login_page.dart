@@ -1,9 +1,16 @@
 // dcpos_app/lib/pages/login_page.dart
 
 import 'package:flutter/material.dart';
-import 'package:dcpos_app/main.dart';
+// 🛑 IMPORTAR IsarService (asumiendo que tiene la instancia global)
+import 'package:dcpos_app/isar_service.dart';
+// Eliminar o mantener el import de ApiService según sea necesario,
+// pero ya no es necesario para la limpieza.
+import 'package:dcpos_app/services/api_service.dart';
+import 'package:dcpos_app/main.dart'; // Para apiService y isarService globales
 import 'package:dcpos_app/utils/responsive_extension.dart';
 import 'package:dcpos_app/layouts/main_layout.dart';
+
+// Asumimos que 'isarService' y 'apiService' son instancias globales.
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -19,7 +26,43 @@ class _LoginPageState extends State<LoginPage> {
   bool _isLoading = false;
   String? _errorMessage;
 
+  // ------------------------------------------------------------------
+  // Nuevo método para limpiar Isar
+  // ------------------------------------------------------------------
+  Future<void> _handleClearIsar() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      // 🛑 CAMBIO CRÍTICO: Llama a isarService.clearAllData()
+      await isarService.clearAllData();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('✅ Base de datos local de Isar eliminada.'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _errorMessage =
+              'Error al limpiar DB: ${e.toString().replaceFirst('Exception: ', '')}';
+        });
+      }
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+  // ------------------------------------------------------------------
+
   Future<void> _handleLogin() async {
+    // ... (Método de login sin cambios)
     if (!_formKey.currentState!.validate()) {
       return;
     }
@@ -128,6 +171,21 @@ class _LoginPageState extends State<LoginPage> {
                             ),
                     ),
                   ),
+
+                  // --------------------------------------------------
+                  // BOTÓN DE DEBUG PARA LIMPIAR ISAR (Se mantiene)
+                  // --------------------------------------------------
+                  const SizedBox(height: 20),
+                  OutlinedButton.icon(
+                    onPressed: _isLoading ? null : _handleClearIsar,
+                    icon: const Icon(Icons.delete_forever, size: 18),
+                    label: const Text('⚠️ Borrar DB Local (Debug)'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.red,
+                      side: const BorderSide(color: Colors.red),
+                    ),
+                  ),
+                  // --------------------------------------------------
                 ],
               ),
             ),
