@@ -1,4 +1,4 @@
-// dcpos_app/lib/models/user_local.dart
+// dcpos_app/lib/models/local/user_local.dart
 
 import 'package:isar/isar.dart';
 

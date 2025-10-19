@@ -1,4 +1,5 @@
-// dcpos_app/lib/home_page.dart
+// dcpos_app/lib/pages/home_page.dart
+
 import 'package:dcpos_app/utils/responsive_extension.dart';
 import 'package:flutter/material.dart';
 
@@ -7,38 +8,44 @@ class HomePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // 1. Lógica para el AppBar (Condicional)
-    final appBarTitle = context.isMobile
-        ? 'DCAPOS Móvil'
-        : 'DCAPOS POS/Desktop';
-
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(appBarTitle),
-        actions: [
-          if (context.isMobile)
-            IconButton(onPressed: () {}, icon: const Icon(Icons.menu)),
-        ],
+    // Aquí solo se define el cuerpo de la página.
+    final content = Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              'Bienvenido al Sistema DCAPOS',
+              style: Theme.of(context).textTheme.headlineMedium,
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              context.isMobile
+                  ? 'Estás usando la interfaz Móvil.'
+                  : 'Estás usando la interfaz Desktop/POS.',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            const SizedBox(height: 40),
+            // Un botón de ejemplo para demostrar que estamos logueados
+            ElevatedButton(
+              onPressed: () {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Operación de prueba exitosa.')),
+                );
+              },
+              child: const Text('Comenzar Operación'),
+            ),
+          ],
+        ),
       ),
+    );
 
-      // 2. Lógica del Body: Diseño condicional
-      body: Center(child: context.isMobile ? Text("movile") : Text("Desktop")),
-
-      // 3. Lógica del BottomNavigationBar (Solo en móvil)
-      bottomNavigationBar: context.isMobile
-          ? BottomNavigationBar(
-              items: const [
-                BottomNavigationBarItem(
-                  icon: Icon(Icons.home),
-                  label: 'Inicio',
-                ),
-                BottomNavigationBarItem(
-                  icon: Icon(Icons.person),
-                  label: 'Perfil',
-                ),
-              ],
-            )
-          : null,
+    // Devolvemos un Scaffold simple con solo el contenido
+    return Scaffold(
+      // El AppBar y BottomNavigationBar se gestionan en MainLayout
+      body: content,
     );
   }
 }
