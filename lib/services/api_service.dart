@@ -1,46 +1,57 @@
-// dcpos_app/lib/services/api_service.dart
+// dcpos_app/lib/services/api_service.dart (Código completo con correcciones)
 
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
-import 'package:isar/isar.dart';
 
 // ISAR
 import 'package:dcpos_app/isar_service.dart';
 import 'package:dcpos_app/models/local/user_local.dart';
 
-// MODELOS DOMINIO (SIN JSON SERIALIZABLE)
+// MODELOS DOMINIO
 import 'package:dcpos_app/models/domain/user.dart';
 import 'package:dcpos_app/models/domain/platform.dart';
-// Importa auth.dart si decides usar el modelo Token
-// import 'package:dcpos_app/models/domain/auth.dart';
+import 'package:dcpos_app/models/domain/company_update.dart';
 
-// Usaremos localhost para desarrollo en escritorio. ¡Asegúrate de que FastAPI esté corriendo!
+import 'package:dcpos_app/models/domain/branch_update.dart';
+import 'package:dcpos_app/data_sources/local_user_data_source.dart';
+import 'package:isar/isar.dart';
+
 // Para Android Emulator: 'http://10.0.2.2:8000/api/v1'
 const String _baseUrl = 'http://localhost:8000/api/v1';
 
 class ApiService {
   final Dio _dio = Dio();
   final IsarService _isarService;
+  final LocalUserDataSource? _localUserDataSource;
 
-  ApiService(this._isarService) {
+  // 💡 CORRECCIÓN CRÍTICA: Almacena el token más reciente en memoria
+  String? _latestToken;
+
+  ApiService(this._isarService, {LocalUserDataSource? localUserDataSource})
+      : _localUserDataSource = localUserDataSource {
     _dio.options.baseUrl = _baseUrl;
     _dio.options.connectTimeout = const Duration(seconds: 10);
     _dio.options.receiveTimeout = const Duration(seconds: 10);
 
-    // Añadir interceptor para inyectar el token JWT automáticamente
+    // Interceptor para inyectar el token JWT automáticamente
     _dio.interceptors.add(
       InterceptorsWrapper(
         onRequest: (options, handler) async {
-          // Excluir rutas de autenticación de la inyección de token
-          if (!options.path.contains('/auth/login') &&
-              !options.path.contains('/auth/register')) {
-            final isar = await _isarService.db;
-            // Intenta obtener el token del usuario activo (id=1)
-            final user = await isar.userLocals.get(1);
+          if (!options.path.contains('/auth/login')) {
+            String? token;
 
-            if (user?.jwtToken != null) {
-              // Añadir token si está disponible
-              options.headers['Authorization'] = 'Bearer ${user!.jwtToken}';
+            // 1. Intentar usar el token en memoria (más rápido y garantiza la inmediatez post-login)
+            if (_latestToken != null) {
+              token = _latestToken;
+            } else {
+              // 2. Si no hay token en memoria, leer de Isar (para re-apertura de app o sesión offline)
+              final isar = await _isarService.db;
+              final user = await isar.userLocals.get(1);
+              token = user?.jwtToken;
+            }
+
+            if (token != null) {
+              options.headers['Authorization'] = 'Bearer $token';
             }
           }
 
@@ -54,7 +65,7 @@ class ApiService {
             if (kDebugMode) {
               print('Authentication Error (401): Token expired or invalid.');
             }
-            // Aquí se puede añadir la lógica de logout automático si es necesario
+            // Aquí se debería gestionar un logout forzado si es necesario.
           }
           return handler.next(e);
         },
@@ -77,7 +88,6 @@ class ApiService {
         if (details.isNotEmpty &&
             details[0] is Map &&
             details[0].containsKey('msg')) {
-          // Devuelve el primer mensaje de error de validación
           errorMessage = 'Error de validación: ${details[0]['msg']}';
         }
       }
@@ -91,8 +101,57 @@ class ApiService {
   }
 
   // -------------------------------------------------------------------
-  // A. Endpoints de Autenticación y Perfil
+  // A. Endpoints de Autenticación y Perfil (Login con Fallback Offline)
   // -------------------------------------------------------------------
+
+  /// Sincroniza la lista completa de usuarios desde la API y la guarda en Isar.
+  Future<void> syncAllUsersFromApi() async {
+    final isar = await _isarService.db;
+
+    // 1. Obtener los usuarios de la API
+    final apiUsers = await fetchUsers();
+    if (apiUsers.isEmpty) return;
+
+    // 2. Obtener la sesión activa (ID=1) actual.
+    final currentActiveSession = await isar.userLocals.get(1);
+    final activeExternalId = currentActiveSession?.externalId;
+    final activeJwtToken = currentActiveSession?.jwtToken;
+    final activePasswordHash = currentActiveSession?.passwordHash;
+
+    final List<UserLocal> localUsersToPut = [];
+
+    // 3. Mapear y asignar ID=1 y Token/Hash al usuario activo si está en la API.
+    for (var apiUser in apiUsers) {
+      final userLocal = UserLocal.fromApiDomain(apiUser);
+
+      // Si este usuario de la API es el usuario logueado actualmente, forzamos ID=1
+      if (activeExternalId != null && apiUser.id == activeExternalId) {
+        userLocal.id = 1;
+        userLocal.jwtToken = activeJwtToken;
+        userLocal.passwordHash = activePasswordHash;
+      }
+      // Para todos los demás, el ID es 0 (Isar.autoIncrement)
+
+      localUsersToPut.add(userLocal);
+    }
+
+    await isar.writeTxn(() async {
+      // 4. LIMPIEZA: Borrar todos los usuarios EXCEPTO el ID=1
+      final allNonActiveUserIds = await isar.userLocals
+          .filter()
+          .not()
+          .idEqualTo(1) // Filtramos todos los IDs EXCEPTO el 1
+          .findAll()
+          .then((users) => users.map((u) => u.id).toList());
+
+      if (allNonActiveUserIds.isNotEmpty) {
+        await isar.userLocals.deleteAll(allNonActiveUserIds);
+      }
+
+      // 5. Insertar/Actualizar todos los usuarios.
+      await isar.userLocals.putAllByExternalId(localUsersToPut);
+    });
+  }
 
   /// POST /api/v1/auth/login
   Future<UserLocal> login({
@@ -100,46 +159,118 @@ class ApiService {
     required String password,
   }) async {
     final dataToSend = {'username': username, 'password': password};
+    final isar = await _isarService.db;
 
     try {
+      // =================================================================
+      // 1. INTENTO DE LOGIN ONLINE (API)
+      // =================================================================
       final response = await _dio.post('/auth/login', data: dataToSend);
 
       final token = response.data['access_token'] as String;
-      // El rol lo obtienes de la respuesta del token
       final roleName = response.data['role'] as String;
+
+      // 💡 CORRECCIÓN: Almacenar token en memoria inmediatamente
+      _latestToken = token;
 
       // Obtener datos del usuario con el nuevo token (GET /auth/me)
       final userMeResponse = await _dio.get(
         '/auth/me',
-        options: Options(
-          headers: {
-            // Se inyecta manualmente el token para la llamada inmediata
-            'Authorization': 'Bearer $token',
-          },
-        ),
+        // Opciones para asegurar que usa el token recién obtenido (el Interceptor ya lo haría, pero es más seguro)
+        options: Options(headers: {'Authorization': 'Bearer $token'}),
       );
 
       final userData = userMeResponse.data;
+      final externalUserId = userData['id'].toString();
 
-      // Mapear y guardar el usuario localmente en Isar
-      final user = UserLocal()
-        ..id =
-            1 // Usamos un ID fijo para el usuario activo
+      // Mapear y preparar el objeto (ID=0 por defecto)
+      final userToSync = UserLocal()
+        ..externalId = externalUserId
         ..username = userData['username']
-        ..jwtToken = token
-        ..roleName =
-            roleName // Usamos el rol de la respuesta del token
+        ..jwtToken = token // El token es esencial
+        ..roleId = userData['role_id'] as int
+        ..roleName = roleName
         ..companyId = userData['company_id']?.toString()
-        ..isActive = userData['is_active'];
+        ..branchId = userData['branch_id']?.toString()
+        ..isActive = userData['is_active']
+        ..passwordHash = password; // GUARDAMOS LA CONTRASEÑA
 
-      final isar = await _isarService.db;
       await isar.writeTxn(() async {
-        await isar.userLocals.clear(); // Limpia sesiones anteriores
-        await isar.userLocals.put(user);
+        // 1. Buscar si el usuario ya existe localmente
+        final existingUser = await isar.userLocals
+            .filter()
+            .externalIdEqualTo(externalUserId)
+            .findFirst();
+
+        // 2. Crear o actualizar la Sesión Activa (ID=1)
+        final activeSession = userToSync.copyWith(id: 1, jwtToken: token);
+
+        // A. Si el usuario existe, borramos el registro con su ID auto-incremental (Id > 1).
+        if (existingUser != null) {
+          if (existingUser.id != 1) {
+            await isar.userLocals.delete(existingUser.id);
+          }
+        }
+
+        // B. Insertamos el nuevo registro de sesión en el ID fijo (1).
+        await isar.userLocals.put(activeSession);
       });
 
-      return user;
+      // Retornar el objeto de sesión activa
+      return userToSync.copyWith(id: 1);
     } on DioException catch (e) {
+      // =================================================================
+      // 2. LÓGICA DE LOGIN OFFLINE (FALLBACK)
+      // =================================================================
+
+      final isConnectionError = e.type == DioExceptionType.connectionError ||
+          e.type == DioExceptionType.sendTimeout ||
+          e.type == DioExceptionType.receiveTimeout ||
+          e.type == DioExceptionType.unknown;
+
+      if (isConnectionError) {
+        if (kDebugMode) {
+          print('Error de conexión. Intentando Login Offline...');
+        }
+
+        final localUserMatch = await isar.userLocals
+            .filter()
+            .usernameEqualTo(username)
+            .findFirst();
+
+        // VERIFICACIÓN DE CREDENCIALES OFFLINE:
+        if (localUserMatch != null &&
+            localUserMatch.passwordHash != null &&
+            localUserMatch.passwordHash == password) {
+          if (kDebugMode) {
+            print(
+                'LOGIN OFFLINE EXITOSO para $username. Usando datos locales.');
+          }
+
+          // Establecer la sesión activa en ID=1 con los datos conservados.
+          final activeSession = localUserMatch.copyWith(
+            id: 1,
+            jwtToken: localUserMatch.jwtToken, // Reusar el token si existe
+          );
+
+          // 💡 CORRECCIÓN: Almacenar token en memoria para el Interceptor, incluso si es viejo.
+          _latestToken = localUserMatch.jwtToken;
+
+          await isar.writeTxn(() async {
+            if (localUserMatch.id != 1) {
+              await isar.userLocals.delete(localUserMatch.id);
+            }
+            await isar.userLocals.put(activeSession);
+          });
+
+          return activeSession;
+        }
+
+        throw Exception(
+          'Error de conexión. No hay datos de sesión previa o credenciales inválidas.',
+        );
+      }
+
       String errorMessage = _extractErrorMessage(e);
       throw Exception(errorMessage);
     } catch (e) {
@@ -149,21 +280,39 @@ class ApiService {
     }
   }
 
-  /// Cierra la sesión del usuario eliminando la información local de Isar.
+  /// Cierra la sesión del usuario.
   Future<void> logout() async {
     try {
       if (kDebugMode) {
-        print('LOGOUT: Cleaning up local user data in Isar.');
+        print('LOGOUT: Cleaning up token from local user data in Isar (ID=1).');
       }
-      final isar = await _isarService.db;
 
-      // Limpia la colección UserLocal, eliminando el token.
-      await isar.writeTxn(() async {
-        await isar.userLocals.clear();
-      });
+      // 💡 CORRECCIÓN: Anular el token en memoria inmediatamente
+      _latestToken = null;
+
+      final isar = await _isarService.db;
+      final sessionUser = await isar.userLocals.get(1);
+
+      if (sessionUser != null) {
+        final userWithoutToken = sessionUser.copyWith(
+          jwtToken: null,
+        );
+
+        await isar.writeTxn(() async {
+          await isar.userLocals.put(userWithoutToken);
+        });
+
+        if (kDebugMode) {
+          print('LOGOUT LOCAL SUCCESSFUL: jwtToken set to null in ID=1.');
+        }
+      } else {
+        if (kDebugMode) {
+          print('LOGOUT WARNING: No active session found (ID=1).');
+        }
+      }
     } catch (e) {
       if (kDebugMode) {
-        print('Error during logout: $e');
+        print('Error during local logout transaction: $e');
       }
     }
   }
@@ -182,13 +331,12 @@ class ApiService {
   // B. Endpoints de User Management (CRUD)
   // -------------------------------------------------------------------
 
-  /// GET /api/v1/users/ (Lista usuarios con filtros opcionales)
+  /// GET /api/v1/users/
   Future<List<UserInDB>> fetchUsers({
     String? companyId,
     String? branchId,
   }) async {
     try {
-      // ✅ ARREGLO IMPLEMENTADO: Omitir parámetros nulos/vacíos para evitar error 422
       final Map<String, dynamic> queryParams = {};
 
       if (companyId != null && companyId.isNotEmpty) {
@@ -200,7 +348,6 @@ class ApiService {
 
       final response = await _dio.get(
         '/users/',
-        // Solo enviar queryParameters si hay filtros presentes
         queryParameters: queryParams.isEmpty ? null : queryParams,
       );
 
@@ -242,10 +389,9 @@ class ApiService {
     }
   }
 
-  /// DELETE /api/v1/users/{user_id} (Establece is_active=False)
+  /// DELETE /api/v1/users/{user_id}
   Future<void> deactivateUser(String userId) async {
     try {
-      // El DELETE en FastAPI está mapeado a un 204 sin contenido si es exitoso
       await _dio.delete('/users/$userId');
     } on DioException catch (e) {
       throw Exception(_extractErrorMessage(e));
@@ -287,6 +433,22 @@ class ApiService {
       );
       return CompanyInDB.fromJson(response.data);
     } on DioException catch (e) {
+      throw Exception('Error al crear compañía: ${_extractErrorMessage(e)}');
+    }
+  }
+
+  /// PATCH /api/v1/platform/companies/{companyId}
+  Future<CompanyInDB> updateCompany(
+    String companyId,
+    CompanyUpdate companyUpdate,
+  ) async {
+    try {
+      final response = await _dio.patch(
+        '/platform/companies/$companyId',
+        data: companyUpdate.toJson(),
+      );
+      return CompanyInDB.fromJson(response.data);
+    } on DioException catch (e) {
       throw Exception(_extractErrorMessage(e));
     }
   }
@@ -309,12 +471,41 @@ class ApiService {
     }
   }
 
+  /// GET /api/v1/platform/companies/{company_id}/branches/{branch_id}
+  Future<BranchInDB> fetchBranch(String companyId, String branchId) async {
+    try {
+      final response = await _dio.get(
+        '/platform/companies/$companyId/branches/$branchId',
+      );
+      return BranchInDB.fromJson(response.data);
+    } on DioException catch (e) {
+      throw Exception(_extractErrorMessage(e));
+    }
+  }
+
   /// POST /api/v1/platform/companies/{company_id}/branches
   Future<BranchInDB> createBranch(String companyId, BranchCreate branch) async {
     try {
       final response = await _dio.post(
         '/platform/companies/$companyId/branches',
         data: branch.toJson(),
+      );
+      return BranchInDB.fromJson(response.data);
+    } on DioException catch (e) {
+      throw Exception(_extractErrorMessage(e));
+    }
+  }
+
+  /// PATCH /api/v1/platform/companies/{company_id}/branches/{branch_id}
+  Future<BranchInDB> updateBranch(
+    String companyId,
+    String branchId,
+    BranchUpdate branchUpdate,
+  ) async {
+    try {
+      final response = await _dio.patch(
+        '/platform/companies/$companyId/branches/$branchId',
+        data: branchUpdate.toJson(),
       );
       return BranchInDB.fromJson(response.data);
     } on DioException catch (e) {
@@ -333,7 +524,6 @@ class ApiService {
     }
     await _isarService.db.then((isar) {
       return isar.writeTxn(() async {
-        // Método que elimina todos los datos y restablece las colecciones
         await isar.clear();
       });
     });

@@ -17,28 +17,48 @@ const UserLocalSchema = CollectionSchema(
   name: r'UserLocal',
   id: 5846211031786981232,
   properties: {
-    r'companyId': PropertySchema(
+    r'branchId': PropertySchema(
       id: 0,
+      name: r'branchId',
+      type: IsarType.string,
+    ),
+    r'companyId': PropertySchema(
+      id: 1,
       name: r'companyId',
       type: IsarType.string,
     ),
+    r'externalId': PropertySchema(
+      id: 2,
+      name: r'externalId',
+      type: IsarType.string,
+    ),
     r'isActive': PropertySchema(
-      id: 1,
+      id: 3,
       name: r'isActive',
       type: IsarType.bool,
     ),
     r'jwtToken': PropertySchema(
-      id: 2,
+      id: 4,
       name: r'jwtToken',
       type: IsarType.string,
     ),
+    r'passwordHash': PropertySchema(
+      id: 5,
+      name: r'passwordHash',
+      type: IsarType.string,
+    ),
+    r'roleId': PropertySchema(
+      id: 6,
+      name: r'roleId',
+      type: IsarType.long,
+    ),
     r'roleName': PropertySchema(
-      id: 3,
+      id: 7,
       name: r'roleName',
       type: IsarType.string,
     ),
     r'username': PropertySchema(
-      id: 4,
+      id: 8,
       name: r'username',
       type: IsarType.string,
     )
@@ -49,14 +69,14 @@ const UserLocalSchema = CollectionSchema(
   deserializeProp: _userLocalDeserializeProp,
   idName: r'id',
   indexes: {
-    r'username': IndexSchema(
-      id: -2899563114555695793,
-      name: r'username',
+    r'externalId': IndexSchema(
+      id: 8629824136592255998,
+      name: r'externalId',
       unique: true,
       replace: false,
       properties: [
         IndexPropertySchema(
-          name: r'username',
+          name: r'externalId',
           type: IndexType.hash,
           caseSensitive: true,
         )
@@ -78,13 +98,31 @@ int _userLocalEstimateSize(
 ) {
   var bytesCount = offsets.last;
   {
+    final value = object.branchId;
+    if (value != null) {
+      bytesCount += 3 + value.length * 3;
+    }
+  }
+  {
     final value = object.companyId;
     if (value != null) {
       bytesCount += 3 + value.length * 3;
     }
   }
   {
+    final value = object.externalId;
+    if (value != null) {
+      bytesCount += 3 + value.length * 3;
+    }
+  }
+  {
     final value = object.jwtToken;
+    if (value != null) {
+      bytesCount += 3 + value.length * 3;
+    }
+  }
+  {
+    final value = object.passwordHash;
     if (value != null) {
       bytesCount += 3 + value.length * 3;
     }
@@ -110,11 +148,15 @@ void _userLocalSerialize(
   List<int> offsets,
   Map<Type, List<int>> allOffsets,
 ) {
-  writer.writeString(offsets[0], object.companyId);
-  writer.writeBool(offsets[1], object.isActive);
-  writer.writeString(offsets[2], object.jwtToken);
-  writer.writeString(offsets[3], object.roleName);
-  writer.writeString(offsets[4], object.username);
+  writer.writeString(offsets[0], object.branchId);
+  writer.writeString(offsets[1], object.companyId);
+  writer.writeString(offsets[2], object.externalId);
+  writer.writeBool(offsets[3], object.isActive);
+  writer.writeString(offsets[4], object.jwtToken);
+  writer.writeString(offsets[5], object.passwordHash);
+  writer.writeLong(offsets[6], object.roleId);
+  writer.writeString(offsets[7], object.roleName);
+  writer.writeString(offsets[8], object.username);
 }
 
 UserLocal _userLocalDeserialize(
@@ -123,13 +165,18 @@ UserLocal _userLocalDeserialize(
   List<int> offsets,
   Map<Type, List<int>> allOffsets,
 ) {
-  final object = UserLocal();
-  object.companyId = reader.readStringOrNull(offsets[0]);
+  final object = UserLocal(
+    branchId: reader.readStringOrNull(offsets[0]),
+    companyId: reader.readStringOrNull(offsets[1]),
+    externalId: reader.readStringOrNull(offsets[2]),
+    isActive: reader.readBoolOrNull(offsets[3]),
+    jwtToken: reader.readStringOrNull(offsets[4]),
+    passwordHash: reader.readStringOrNull(offsets[5]),
+    roleId: reader.readLongOrNull(offsets[6]),
+    roleName: reader.readStringOrNull(offsets[7]),
+    username: reader.readStringOrNull(offsets[8]),
+  );
   object.id = id;
-  object.isActive = reader.readBool(offsets[1]);
-  object.jwtToken = reader.readStringOrNull(offsets[2]);
-  object.roleName = reader.readStringOrNull(offsets[3]);
-  object.username = reader.readStringOrNull(offsets[4]);
   return object;
 }
 
@@ -143,12 +190,20 @@ P _userLocalDeserializeProp<P>(
     case 0:
       return (reader.readStringOrNull(offset)) as P;
     case 1:
-      return (reader.readBool(offset)) as P;
+      return (reader.readStringOrNull(offset)) as P;
     case 2:
       return (reader.readStringOrNull(offset)) as P;
     case 3:
-      return (reader.readStringOrNull(offset)) as P;
+      return (reader.readBoolOrNull(offset)) as P;
     case 4:
+      return (reader.readStringOrNull(offset)) as P;
+    case 5:
+      return (reader.readStringOrNull(offset)) as P;
+    case 6:
+      return (reader.readLongOrNull(offset)) as P;
+    case 7:
+      return (reader.readStringOrNull(offset)) as P;
+    case 8:
       return (reader.readStringOrNull(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
@@ -168,57 +223,57 @@ void _userLocalAttach(IsarCollection<dynamic> col, Id id, UserLocal object) {
 }
 
 extension UserLocalByIndex on IsarCollection<UserLocal> {
-  Future<UserLocal?> getByUsername(String? username) {
-    return getByIndex(r'username', [username]);
+  Future<UserLocal?> getByExternalId(String? externalId) {
+    return getByIndex(r'externalId', [externalId]);
   }
 
-  UserLocal? getByUsernameSync(String? username) {
-    return getByIndexSync(r'username', [username]);
+  UserLocal? getByExternalIdSync(String? externalId) {
+    return getByIndexSync(r'externalId', [externalId]);
   }
 
-  Future<bool> deleteByUsername(String? username) {
-    return deleteByIndex(r'username', [username]);
+  Future<bool> deleteByExternalId(String? externalId) {
+    return deleteByIndex(r'externalId', [externalId]);
   }
 
-  bool deleteByUsernameSync(String? username) {
-    return deleteByIndexSync(r'username', [username]);
+  bool deleteByExternalIdSync(String? externalId) {
+    return deleteByIndexSync(r'externalId', [externalId]);
   }
 
-  Future<List<UserLocal?>> getAllByUsername(List<String?> usernameValues) {
-    final values = usernameValues.map((e) => [e]).toList();
-    return getAllByIndex(r'username', values);
+  Future<List<UserLocal?>> getAllByExternalId(List<String?> externalIdValues) {
+    final values = externalIdValues.map((e) => [e]).toList();
+    return getAllByIndex(r'externalId', values);
   }
 
-  List<UserLocal?> getAllByUsernameSync(List<String?> usernameValues) {
-    final values = usernameValues.map((e) => [e]).toList();
-    return getAllByIndexSync(r'username', values);
+  List<UserLocal?> getAllByExternalIdSync(List<String?> externalIdValues) {
+    final values = externalIdValues.map((e) => [e]).toList();
+    return getAllByIndexSync(r'externalId', values);
   }
 
-  Future<int> deleteAllByUsername(List<String?> usernameValues) {
-    final values = usernameValues.map((e) => [e]).toList();
-    return deleteAllByIndex(r'username', values);
+  Future<int> deleteAllByExternalId(List<String?> externalIdValues) {
+    final values = externalIdValues.map((e) => [e]).toList();
+    return deleteAllByIndex(r'externalId', values);
   }
 
-  int deleteAllByUsernameSync(List<String?> usernameValues) {
-    final values = usernameValues.map((e) => [e]).toList();
-    return deleteAllByIndexSync(r'username', values);
+  int deleteAllByExternalIdSync(List<String?> externalIdValues) {
+    final values = externalIdValues.map((e) => [e]).toList();
+    return deleteAllByIndexSync(r'externalId', values);
   }
 
-  Future<Id> putByUsername(UserLocal object) {
-    return putByIndex(r'username', object);
+  Future<Id> putByExternalId(UserLocal object) {
+    return putByIndex(r'externalId', object);
   }
 
-  Id putByUsernameSync(UserLocal object, {bool saveLinks = true}) {
-    return putByIndexSync(r'username', object, saveLinks: saveLinks);
+  Id putByExternalIdSync(UserLocal object, {bool saveLinks = true}) {
+    return putByIndexSync(r'externalId', object, saveLinks: saveLinks);
   }
 
-  Future<List<Id>> putAllByUsername(List<UserLocal> objects) {
-    return putAllByIndex(r'username', objects);
+  Future<List<Id>> putAllByExternalId(List<UserLocal> objects) {
+    return putAllByIndex(r'externalId', objects);
   }
 
-  List<Id> putAllByUsernameSync(List<UserLocal> objects,
+  List<Id> putAllByExternalIdSync(List<UserLocal> objects,
       {bool saveLinks = true}) {
-    return putAllByIndexSync(r'username', objects, saveLinks: saveLinks);
+    return putAllByIndexSync(r'externalId', objects, saveLinks: saveLinks);
   }
 }
 
@@ -298,19 +353,19 @@ extension UserLocalQueryWhere
     });
   }
 
-  QueryBuilder<UserLocal, UserLocal, QAfterWhereClause> usernameIsNull() {
+  QueryBuilder<UserLocal, UserLocal, QAfterWhereClause> externalIdIsNull() {
     return QueryBuilder.apply(this, (query) {
       return query.addWhereClause(IndexWhereClause.equalTo(
-        indexName: r'username',
+        indexName: r'externalId',
         value: [null],
       ));
     });
   }
 
-  QueryBuilder<UserLocal, UserLocal, QAfterWhereClause> usernameIsNotNull() {
+  QueryBuilder<UserLocal, UserLocal, QAfterWhereClause> externalIdIsNotNull() {
     return QueryBuilder.apply(this, (query) {
       return query.addWhereClause(IndexWhereClause.between(
-        indexName: r'username',
+        indexName: r'externalId',
         lower: [null],
         includeLower: false,
         upper: [],
@@ -318,45 +373,45 @@ extension UserLocalQueryWhere
     });
   }
 
-  QueryBuilder<UserLocal, UserLocal, QAfterWhereClause> usernameEqualTo(
-      String? username) {
+  QueryBuilder<UserLocal, UserLocal, QAfterWhereClause> externalIdEqualTo(
+      String? externalId) {
     return QueryBuilder.apply(this, (query) {
       return query.addWhereClause(IndexWhereClause.equalTo(
-        indexName: r'username',
-        value: [username],
+        indexName: r'externalId',
+        value: [externalId],
       ));
     });
   }
 
-  QueryBuilder<UserLocal, UserLocal, QAfterWhereClause> usernameNotEqualTo(
-      String? username) {
+  QueryBuilder<UserLocal, UserLocal, QAfterWhereClause> externalIdNotEqualTo(
+      String? externalId) {
     return QueryBuilder.apply(this, (query) {
       if (query.whereSort == Sort.asc) {
         return query
             .addWhereClause(IndexWhereClause.between(
-              indexName: r'username',
+              indexName: r'externalId',
               lower: [],
-              upper: [username],
+              upper: [externalId],
               includeUpper: false,
             ))
             .addWhereClause(IndexWhereClause.between(
-              indexName: r'username',
-              lower: [username],
+              indexName: r'externalId',
+              lower: [externalId],
               includeLower: false,
               upper: [],
             ));
       } else {
         return query
             .addWhereClause(IndexWhereClause.between(
-              indexName: r'username',
-              lower: [username],
+              indexName: r'externalId',
+              lower: [externalId],
               includeLower: false,
               upper: [],
             ))
             .addWhereClause(IndexWhereClause.between(
-              indexName: r'username',
+              indexName: r'externalId',
               lower: [],
-              upper: [username],
+              upper: [externalId],
               includeUpper: false,
             ));
       }
@@ -366,6 +421,154 @@ extension UserLocalQueryWhere
 
 extension UserLocalQueryFilter
     on QueryBuilder<UserLocal, UserLocal, QFilterCondition> {
+  QueryBuilder<UserLocal, UserLocal, QAfterFilterCondition> branchIdIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNull(
+        property: r'branchId',
+      ));
+    });
+  }
+
+  QueryBuilder<UserLocal, UserLocal, QAfterFilterCondition>
+      branchIdIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNotNull(
+        property: r'branchId',
+      ));
+    });
+  }
+
+  QueryBuilder<UserLocal, UserLocal, QAfterFilterCondition> branchIdEqualTo(
+    String? value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'branchId',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<UserLocal, UserLocal, QAfterFilterCondition> branchIdGreaterThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'branchId',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<UserLocal, UserLocal, QAfterFilterCondition> branchIdLessThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'branchId',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<UserLocal, UserLocal, QAfterFilterCondition> branchIdBetween(
+    String? lower,
+    String? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'branchId',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<UserLocal, UserLocal, QAfterFilterCondition> branchIdStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'branchId',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<UserLocal, UserLocal, QAfterFilterCondition> branchIdEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'branchId',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<UserLocal, UserLocal, QAfterFilterCondition> branchIdContains(
+      String value,
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'branchId',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<UserLocal, UserLocal, QAfterFilterCondition> branchIdMatches(
+      String pattern,
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'branchId',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<UserLocal, UserLocal, QAfterFilterCondition> branchIdIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'branchId',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<UserLocal, UserLocal, QAfterFilterCondition>
+      branchIdIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'branchId',
+        value: '',
+      ));
+    });
+  }
+
   QueryBuilder<UserLocal, UserLocal, QAfterFilterCondition> companyIdIsNull() {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(const FilterCondition.isNull(
@@ -515,6 +718,157 @@ extension UserLocalQueryFilter
     });
   }
 
+  QueryBuilder<UserLocal, UserLocal, QAfterFilterCondition> externalIdIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNull(
+        property: r'externalId',
+      ));
+    });
+  }
+
+  QueryBuilder<UserLocal, UserLocal, QAfterFilterCondition>
+      externalIdIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNotNull(
+        property: r'externalId',
+      ));
+    });
+  }
+
+  QueryBuilder<UserLocal, UserLocal, QAfterFilterCondition> externalIdEqualTo(
+    String? value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'externalId',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<UserLocal, UserLocal, QAfterFilterCondition>
+      externalIdGreaterThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'externalId',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<UserLocal, UserLocal, QAfterFilterCondition> externalIdLessThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'externalId',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<UserLocal, UserLocal, QAfterFilterCondition> externalIdBetween(
+    String? lower,
+    String? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'externalId',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<UserLocal, UserLocal, QAfterFilterCondition>
+      externalIdStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'externalId',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<UserLocal, UserLocal, QAfterFilterCondition> externalIdEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'externalId',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<UserLocal, UserLocal, QAfterFilterCondition> externalIdContains(
+      String value,
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'externalId',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<UserLocal, UserLocal, QAfterFilterCondition> externalIdMatches(
+      String pattern,
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'externalId',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<UserLocal, UserLocal, QAfterFilterCondition>
+      externalIdIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'externalId',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<UserLocal, UserLocal, QAfterFilterCondition>
+      externalIdIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'externalId',
+        value: '',
+      ));
+    });
+  }
+
   QueryBuilder<UserLocal, UserLocal, QAfterFilterCondition> idEqualTo(
       Id value) {
     return QueryBuilder.apply(this, (query) {
@@ -568,8 +922,25 @@ extension UserLocalQueryFilter
     });
   }
 
+  QueryBuilder<UserLocal, UserLocal, QAfterFilterCondition> isActiveIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNull(
+        property: r'isActive',
+      ));
+    });
+  }
+
+  QueryBuilder<UserLocal, UserLocal, QAfterFilterCondition>
+      isActiveIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNotNull(
+        property: r'isActive',
+      ));
+    });
+  }
+
   QueryBuilder<UserLocal, UserLocal, QAfterFilterCondition> isActiveEqualTo(
-      bool value) {
+      bool? value) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.equalTo(
         property: r'isActive',
@@ -722,6 +1093,228 @@ extension UserLocalQueryFilter
       return query.addFilterCondition(FilterCondition.greaterThan(
         property: r'jwtToken',
         value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<UserLocal, UserLocal, QAfterFilterCondition>
+      passwordHashIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNull(
+        property: r'passwordHash',
+      ));
+    });
+  }
+
+  QueryBuilder<UserLocal, UserLocal, QAfterFilterCondition>
+      passwordHashIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNotNull(
+        property: r'passwordHash',
+      ));
+    });
+  }
+
+  QueryBuilder<UserLocal, UserLocal, QAfterFilterCondition> passwordHashEqualTo(
+    String? value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'passwordHash',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<UserLocal, UserLocal, QAfterFilterCondition>
+      passwordHashGreaterThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'passwordHash',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<UserLocal, UserLocal, QAfterFilterCondition>
+      passwordHashLessThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'passwordHash',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<UserLocal, UserLocal, QAfterFilterCondition> passwordHashBetween(
+    String? lower,
+    String? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'passwordHash',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<UserLocal, UserLocal, QAfterFilterCondition>
+      passwordHashStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'passwordHash',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<UserLocal, UserLocal, QAfterFilterCondition>
+      passwordHashEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'passwordHash',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<UserLocal, UserLocal, QAfterFilterCondition>
+      passwordHashContains(String value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'passwordHash',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<UserLocal, UserLocal, QAfterFilterCondition> passwordHashMatches(
+      String pattern,
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'passwordHash',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<UserLocal, UserLocal, QAfterFilterCondition>
+      passwordHashIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'passwordHash',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<UserLocal, UserLocal, QAfterFilterCondition>
+      passwordHashIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'passwordHash',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<UserLocal, UserLocal, QAfterFilterCondition> roleIdIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNull(
+        property: r'roleId',
+      ));
+    });
+  }
+
+  QueryBuilder<UserLocal, UserLocal, QAfterFilterCondition> roleIdIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNotNull(
+        property: r'roleId',
+      ));
+    });
+  }
+
+  QueryBuilder<UserLocal, UserLocal, QAfterFilterCondition> roleIdEqualTo(
+      int? value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'roleId',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<UserLocal, UserLocal, QAfterFilterCondition> roleIdGreaterThan(
+    int? value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'roleId',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<UserLocal, UserLocal, QAfterFilterCondition> roleIdLessThan(
+    int? value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'roleId',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<UserLocal, UserLocal, QAfterFilterCondition> roleIdBetween(
+    int? lower,
+    int? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'roleId',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
       ));
     });
   }
@@ -1030,6 +1623,18 @@ extension UserLocalQueryLinks
     on QueryBuilder<UserLocal, UserLocal, QFilterCondition> {}
 
 extension UserLocalQuerySortBy on QueryBuilder<UserLocal, UserLocal, QSortBy> {
+  QueryBuilder<UserLocal, UserLocal, QAfterSortBy> sortByBranchId() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'branchId', Sort.asc);
+    });
+  }
+
+  QueryBuilder<UserLocal, UserLocal, QAfterSortBy> sortByBranchIdDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'branchId', Sort.desc);
+    });
+  }
+
   QueryBuilder<UserLocal, UserLocal, QAfterSortBy> sortByCompanyId() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'companyId', Sort.asc);
@@ -1039,6 +1644,18 @@ extension UserLocalQuerySortBy on QueryBuilder<UserLocal, UserLocal, QSortBy> {
   QueryBuilder<UserLocal, UserLocal, QAfterSortBy> sortByCompanyIdDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'companyId', Sort.desc);
+    });
+  }
+
+  QueryBuilder<UserLocal, UserLocal, QAfterSortBy> sortByExternalId() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'externalId', Sort.asc);
+    });
+  }
+
+  QueryBuilder<UserLocal, UserLocal, QAfterSortBy> sortByExternalIdDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'externalId', Sort.desc);
     });
   }
 
@@ -1063,6 +1680,30 @@ extension UserLocalQuerySortBy on QueryBuilder<UserLocal, UserLocal, QSortBy> {
   QueryBuilder<UserLocal, UserLocal, QAfterSortBy> sortByJwtTokenDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'jwtToken', Sort.desc);
+    });
+  }
+
+  QueryBuilder<UserLocal, UserLocal, QAfterSortBy> sortByPasswordHash() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'passwordHash', Sort.asc);
+    });
+  }
+
+  QueryBuilder<UserLocal, UserLocal, QAfterSortBy> sortByPasswordHashDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'passwordHash', Sort.desc);
+    });
+  }
+
+  QueryBuilder<UserLocal, UserLocal, QAfterSortBy> sortByRoleId() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'roleId', Sort.asc);
+    });
+  }
+
+  QueryBuilder<UserLocal, UserLocal, QAfterSortBy> sortByRoleIdDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'roleId', Sort.desc);
     });
   }
 
@@ -1093,6 +1734,18 @@ extension UserLocalQuerySortBy on QueryBuilder<UserLocal, UserLocal, QSortBy> {
 
 extension UserLocalQuerySortThenBy
     on QueryBuilder<UserLocal, UserLocal, QSortThenBy> {
+  QueryBuilder<UserLocal, UserLocal, QAfterSortBy> thenByBranchId() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'branchId', Sort.asc);
+    });
+  }
+
+  QueryBuilder<UserLocal, UserLocal, QAfterSortBy> thenByBranchIdDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'branchId', Sort.desc);
+    });
+  }
+
   QueryBuilder<UserLocal, UserLocal, QAfterSortBy> thenByCompanyId() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'companyId', Sort.asc);
@@ -1102,6 +1755,18 @@ extension UserLocalQuerySortThenBy
   QueryBuilder<UserLocal, UserLocal, QAfterSortBy> thenByCompanyIdDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'companyId', Sort.desc);
+    });
+  }
+
+  QueryBuilder<UserLocal, UserLocal, QAfterSortBy> thenByExternalId() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'externalId', Sort.asc);
+    });
+  }
+
+  QueryBuilder<UserLocal, UserLocal, QAfterSortBy> thenByExternalIdDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'externalId', Sort.desc);
     });
   }
 
@@ -1141,6 +1806,30 @@ extension UserLocalQuerySortThenBy
     });
   }
 
+  QueryBuilder<UserLocal, UserLocal, QAfterSortBy> thenByPasswordHash() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'passwordHash', Sort.asc);
+    });
+  }
+
+  QueryBuilder<UserLocal, UserLocal, QAfterSortBy> thenByPasswordHashDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'passwordHash', Sort.desc);
+    });
+  }
+
+  QueryBuilder<UserLocal, UserLocal, QAfterSortBy> thenByRoleId() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'roleId', Sort.asc);
+    });
+  }
+
+  QueryBuilder<UserLocal, UserLocal, QAfterSortBy> thenByRoleIdDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'roleId', Sort.desc);
+    });
+  }
+
   QueryBuilder<UserLocal, UserLocal, QAfterSortBy> thenByRoleName() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'roleName', Sort.asc);
@@ -1168,10 +1857,24 @@ extension UserLocalQuerySortThenBy
 
 extension UserLocalQueryWhereDistinct
     on QueryBuilder<UserLocal, UserLocal, QDistinct> {
+  QueryBuilder<UserLocal, UserLocal, QDistinct> distinctByBranchId(
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'branchId', caseSensitive: caseSensitive);
+    });
+  }
+
   QueryBuilder<UserLocal, UserLocal, QDistinct> distinctByCompanyId(
       {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'companyId', caseSensitive: caseSensitive);
+    });
+  }
+
+  QueryBuilder<UserLocal, UserLocal, QDistinct> distinctByExternalId(
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'externalId', caseSensitive: caseSensitive);
     });
   }
 
@@ -1185,6 +1888,19 @@ extension UserLocalQueryWhereDistinct
       {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'jwtToken', caseSensitive: caseSensitive);
+    });
+  }
+
+  QueryBuilder<UserLocal, UserLocal, QDistinct> distinctByPasswordHash(
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'passwordHash', caseSensitive: caseSensitive);
+    });
+  }
+
+  QueryBuilder<UserLocal, UserLocal, QDistinct> distinctByRoleId() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'roleId');
     });
   }
 
@@ -1211,13 +1927,25 @@ extension UserLocalQueryProperty
     });
   }
 
+  QueryBuilder<UserLocal, String?, QQueryOperations> branchIdProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'branchId');
+    });
+  }
+
   QueryBuilder<UserLocal, String?, QQueryOperations> companyIdProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'companyId');
     });
   }
 
-  QueryBuilder<UserLocal, bool, QQueryOperations> isActiveProperty() {
+  QueryBuilder<UserLocal, String?, QQueryOperations> externalIdProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'externalId');
+    });
+  }
+
+  QueryBuilder<UserLocal, bool?, QQueryOperations> isActiveProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'isActive');
     });
@@ -1226,6 +1954,18 @@ extension UserLocalQueryProperty
   QueryBuilder<UserLocal, String?, QQueryOperations> jwtTokenProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'jwtToken');
+    });
+  }
+
+  QueryBuilder<UserLocal, String?, QQueryOperations> passwordHashProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'passwordHash');
+    });
+  }
+
+  QueryBuilder<UserLocal, int?, QQueryOperations> roleIdProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'roleId');
     });
   }
 

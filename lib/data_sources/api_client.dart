@@ -2,24 +2,23 @@
 
 import 'dart:convert';
 import 'package:dio/dio.dart';
-import 'package:dcpos_app/models/domain/platform.dart'; // Importación de modelos de dominio
 
 /// Cliente genérico que usa Dio para las llamadas API del Repositorio.
 class ApiClient {
   final Dio _dio;
 
   ApiClient({required String baseUrl, required String authToken})
-    : _dio = Dio(
-        BaseOptions(
-          baseUrl: baseUrl,
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': 'Bearer $authToken',
-          },
-          receiveTimeout: const Duration(seconds: 15),
-          connectTimeout: const Duration(seconds: 15),
-        ),
-      );
+      : _dio = Dio(
+          BaseOptions(
+            baseUrl: baseUrl,
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer $authToken',
+            },
+            receiveTimeout: const Duration(seconds: 15),
+            connectTimeout: const Duration(seconds: 15),
+          ),
+        );
 
   /// Método genérico para solicitudes GET.
   Future<List<dynamic>> get(String path) async {

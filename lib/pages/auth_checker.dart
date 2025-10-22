@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:dcpos_app/main.dart';
 import 'package:dcpos_app/layouts/main_layout.dart';
 import 'package:dcpos_app/pages/login_page.dart';
-import 'package:isar/isar.dart';
+
 // ¡RUTA CORREGIDA!
 import 'package:dcpos_app/models/local/user_local.dart';
 

@@ -19,7 +19,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 version: 1.0.0+1
 
 environment:
-  sdk: ^3.9.0
+  sdk: '>=3.4.0 <4.0.0'
 
 # Dependencies specify other packages that your package needs in order to work.
 # To automatically upgrade your package dependencies to the latest versions
@@ -35,7 +35,7 @@ dependencies:
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
   # Base de datos local (Modo Offline)
-  isar: ^3.1.0+1 
+  isar: ^3.1.0
   isar_flutter_libs: ^3.1.0+1 
   path_provider: ^2.0.11
   provider: ^6.1.2
@@ -54,8 +54,8 @@ dev_dependencies:
   # rules and activating additional ones.
   flutter_lints: ^5.0.0
     # Generador de Código Isar (Crucial para la DB)
-  isar_generator: ^3.1.0+1
-  build_runner: ^2.3.3
+  isar_generator: ^3.1.0
+  build_runner: ^2.4.6
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec

@@ -2,10 +2,7 @@
 
 import 'package:flutter/material.dart';
 // 🛑 IMPORTAR IsarService (asumiendo que tiene la instancia global)
-import 'package:dcpos_app/isar_service.dart';
-// Eliminar o mantener el import de ApiService según sea necesario,
-// pero ya no es necesario para la limpieza.
-import 'package:dcpos_app/services/api_service.dart';
+
 import 'package:dcpos_app/main.dart'; // Para apiService y isarService globales
 import 'package:dcpos_app/utils/responsive_extension.dart';
 import 'package:dcpos_app/layouts/main_layout.dart';
@@ -114,8 +111,8 @@ class _LoginPageState extends State<LoginPage> {
                   Text(
                     'DCAPOS - Iniciar Sesión',
                     style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                      color: Theme.of(context).colorScheme.primary,
-                    ),
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
                   ),
                   const SizedBox(height: 40),
 

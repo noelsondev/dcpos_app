@@ -1,47 +1,115 @@
-// /lib/repositories/platform_repository.dart (MODIFICADO)
+// /lib/repositories/platform_repository.dart
 
 import 'package:dcpos_app/services/api_service.dart';
 import 'package:dcpos_app/data_sources/local_platform_data_source.dart';
+import 'package:dcpos_app/data_sources/local_user_data_source.dart'; // ⬅️ NUEVO: Data Source para Usuarios
 import 'package:dcpos_app/models/domain/platform.dart';
+import 'package:dcpos_app/models/domain/user.dart'; // ⬅️ NUEVO: Modelos de Dominio de Usuario
 import 'package:dcpos_app/models/local/platform_local.dart';
-import 'package:dcpos_app/data_sources/api_client.dart'; // Para NetworkException
+import 'package:dcpos_app/models/local/user_local.dart'; // ⬅️ NUEVO: Modelo Local de Usuario
+import 'package:dcpos_app/models/domain/company_update.dart'; // ⬅️ IMPORTAR
+import 'package:dcpos_app/models/domain/branch_update.dart';
 
 class PlatformRepository {
   final ApiService _apiService;
-  final LocalPlatformDataSource _localDataSource;
+  final LocalPlatformDataSource
+      _localDataSource; // Data Source para Compañías/Sucursales
+  final LocalUserDataSource
+      _localUserDataSource; // ⬅️ Data Source para Usuarios
 
-  PlatformRepository(this._apiService, this._localDataSource);
+  PlatformRepository(
+    this._apiService,
+    this._localDataSource,
+    this._localUserDataSource, // ⬅️ INYECCIÓN
+  );
 
   // ==========================================================
-  // Sincronización (Lectura: Cache-First) - CORREGIDO
+  // USUARIOS: Lectura (Cache-First) & Mutación (API-First, Write-Through)
   // ==========================================================
 
-  /// Obtiene y sincroniza todas las compañías.
-  Future<List<CompanyInDB>> getCompanies() async {
+  /// Obtiene y sincroniza todos los usuarios.
+  Future<List<UserInDB>> getUsers({String? companyId, String? branchId}) async {
     try {
-      // 1. Obtener de la API
-      final List<CompanyInDB> apiCompanies = await _apiService.fetchCompanies();
+      // 1. Obtener de la API (con filtros si aplican)
+      final List<UserInDB> apiUsers = await _apiService.fetchUsers(
+        companyId: companyId,
+        branchId: branchId,
+      );
 
-      // 2. Mapear a Local y GUARDAR en Isar (Sincronización)
-      final List<CompanyLocal> localCompanies = apiCompanies
-          .map((c) => CompanyLocal.fromApiDomain(c))
+      // 2. Mapear a Local y GUARDAR/ACTUALIZAR en Isar (Sincronización)
+      final List<UserLocal> localUsers = apiUsers
+          .map(
+            (u) => UserLocal.fromApiDomain(u),
+          ) // Asumimos este factory existe
           .toList();
 
-      await _localDataSource.saveCompanies(localCompanies);
+      await _localUserDataSource.saveUsers(localUsers);
 
-      // 3. Devolver el modelo de dominio para el Provider
+      // 3. Devolver el modelo de dominio
+      return apiUsers;
+    } on Exception catch (e) {
+      // 4. Si falla la red/API, cargamos desde Isar (Offline).
+      print(
+        "Error al acceder a la red/API: $e. Cargando usuarios desde Isar (Offline).",
+      );
+
+      final List<UserLocal> localUsers =
+          await _localUserDataSource.getAllUsers();
+
+      // 5. Mapeo inverso de Local (Isar) a Domain (para el Provider)
+      return localUsers
+          .map((u) => u.toApiDomain()) // Asumimos este método existe
+          .toList();
+    }
+  }
+
+  /// Crea un nuevo usuario y lo guarda localmente.
+  Future<UserInDB> createUser(UserCreate userCreate) async {
+    final UserInDB newUser = await _apiService.createUser(userCreate);
+
+    // Convertir a Local y guardar
+    final UserLocal localUser = UserLocal.fromApiDomain(newUser);
+    await _localUserDataSource.saveUsers([localUser]);
+
+    return newUser;
+  }
+
+  /// Actualiza un usuario y lo guarda localmente de forma segura.
+  Future<UserInDB> updateUser(String userId, UserUpdate userUpdate) async {
+    final UserInDB updatedUser = await _apiService.updateUser(
+      userId,
+      userUpdate,
+    );
+
+    // Convertir a Local y actualizar de forma segura (sin sobreescribir token/hash)
+    final UserLocal localUser = UserLocal.fromApiDomain(updatedUser);
+    await _localUserDataSource.updateUserSafe(localUser);
+
+    return updatedUser;
+  }
+
+  // ==========================================================
+  // COMPANIES: Lectura (Cache-First) & Mutación (API-First, Write-Through)
+  // ==========================================================
+
+  /// Obtiene y sincroniza todas las compañías. (Cache-First)
+  Future<List<CompanyInDB>> getCompanies() async {
+    try {
+      final List<CompanyInDB> apiCompanies = await _apiService.fetchCompanies();
+
+      final List<CompanyLocal> localCompanies =
+          apiCompanies.map((c) => CompanyLocal.fromApiDomain(c)).toList();
+
+      await _localDataSource.saveCompanies(localCompanies);
       return apiCompanies;
     } on Exception catch (e) {
-      // 4. Si falla la red/API, cargamos desde Isar.
-      //    Nota: Estamos capturando cualquier 'Exception', lo cual incluye DioException.
       print(
         "Error al acceder a la red/API: $e. Cargando datos desde Isar (Offline).",
       );
 
-      final List<CompanyLocal> localCompanies = await _localDataSource
-          .getAllCompanies();
+      final List<CompanyLocal> localCompanies =
+          await _localDataSource.getAllCompanies();
 
-      // 5. Mapeo inverso de Local (Isar) a Domain (para el Provider)
       return localCompanies
           .map(
             (c) => CompanyInDB(
@@ -55,16 +123,49 @@ class PlatformRepository {
     }
   }
 
-  // ... (getBranches no requiere cambios ya que la lógica es similar a getCompanies) ...
+  /// Crea una nueva compañía y la guarda inmediatamente en la base de datos local (API-First).
+  Future<CompanyInDB> createCompany(CompanyCreate companyCreate) async {
+    final CompanyInDB newCompany = await _apiService.createCompany(
+      companyCreate,
+    );
+
+    final CompanyLocal localCompany = CompanyLocal.fromApiDomain(newCompany);
+    await _localDataSource.saveCompanies([localCompany]);
+
+    return newCompany;
+  }
+
+  /// Actualiza una compañía y la guarda en Isar. (API-First)
+  Future<CompanyInDB> updateCompany(
+    String companyId,
+    CompanyUpdate companyUpdate,
+  ) async {
+    final CompanyInDB updatedCompany = await _apiService.updateCompany(
+      companyId,
+      companyUpdate,
+    );
+
+    final CompanyLocal localCompany = CompanyLocal.fromApiDomain(
+      updatedCompany,
+    );
+    await _localDataSource.saveCompanies([localCompany]);
+
+    return updatedCompany;
+  }
+
+  // ==========================================================
+  // BRANCHES: Lectura (Cache-First) & Mutación (API-First, Write-Through)
+  // ==========================================================
+
+  /// Obtiene y sincroniza las sucursales por CompanyID. (Cache-First)
   Future<List<BranchInDB>> getBranches(String companyId) async {
     try {
       final List<BranchInDB> apiBranches = await _apiService.fetchBranches(
         companyId,
       );
 
-      final List<BranchLocal> localBranches = apiBranches
-          .map((b) => BranchLocal.fromApiDomain(b))
-          .toList();
+      final List<BranchLocal> localBranches =
+          apiBranches.map((b) => BranchLocal.fromApiDomain(b)).toList();
 
       await _localDataSource.saveBranches(localBranches);
 
@@ -74,8 +175,8 @@ class PlatformRepository {
         "Error al acceder a la red/API: $e. Cargando sucursales desde Isar (Offline).",
       );
 
-      final List<BranchLocal> localBranches = await _localDataSource
-          .getBranchesByCompanyId(companyId);
+      final List<BranchLocal> localBranches =
+          await _localDataSource.getBranchesByCompanyId(companyId);
 
       return localBranches
           .map(
@@ -90,41 +191,37 @@ class PlatformRepository {
     }
   }
 
-  // ==========================================================
-  // Mutación (Creación: Solo API) - CORREGIDO
-  // ==========================================================
-
-  /// Crea una nueva compañía y la guarda inmediatamente en la base de datos local (Isar).
-  Future<CompanyInDB> createCompany(CompanyCreate companyCreate) async {
-    // 1. Llama a la API (el ApiService maneja la excepción si falla)
-    final CompanyInDB newCompany = await _apiService.createCompany(
-      companyCreate,
-    );
-
-    // 2. CONVERSIÓN Y GUARDADO LOCAL (NUEVA LÍNEA)
-    final CompanyLocal localCompany = CompanyLocal.fromApiDomain(newCompany);
-    await _localDataSource.saveCompanies([localCompany]);
-
-    // 3. Devuelve el modelo de dominio
-    return newCompany;
-  }
-
-  /// Crea una nueva sucursal y la guarda inmediatamente en Isar.
+  /// Crea una nueva sucursal y la guarda inmediatamente en Isar. (API-First)
   Future<BranchInDB> createBranch(
     String companyId,
     BranchCreate branchCreate,
   ) async {
-    // 1. Llama a la API
     final BranchInDB newBranch = await _apiService.createBranch(
       companyId,
       branchCreate,
     );
 
-    // 2. CONVERSIÓN Y GUARDADO LOCAL (NUEVA LÍNEA)
     final BranchLocal localBranch = BranchLocal.fromApiDomain(newBranch);
     await _localDataSource.saveBranches([localBranch]);
 
-    // 3. Devuelve el modelo de dominio
     return newBranch;
+  }
+
+  /// Actualiza una sucursal y la guarda en Isar. (API-First)
+  Future<BranchInDB> updateBranch(
+    String companyId,
+    String branchId,
+    BranchUpdate branchUpdate,
+  ) async {
+    final BranchInDB updatedBranch = await _apiService.updateBranch(
+      companyId,
+      branchId,
+      branchUpdate,
+    );
+
+    final BranchLocal localBranch = BranchLocal.fromApiDomain(updatedBranch);
+    await _localDataSource.saveBranches([localBranch]);
+
+    return updatedBranch;
   }
 }
